@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Conductor — Speaking Energy Trainer</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: rgba(255,255,255,0.08);
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --accent: #7c6af7;
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* ── BACKGROUND GLOW ── */
+    .bg-glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      transition: background 0.6s ease;
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      position: relative; z-index: 1;
+      width: 100%; max-width: 680px;
+      padding: 2rem;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2rem;
+      text-align: center;
+    }
+    .screen.hidden { display: none; }
+
+    /* ── INTRO SCREEN ── */
+    .logo {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.25em;
+      text-transform: uppercase; color: var(--accent);
+    }
+    .hero-title {
+      font-size: clamp(2.8rem, 8vw, 4.5rem);
+      font-weight: 900; line-height: 1.05;
+      background: linear-gradient(135deg, #fff 40%, #7c6af7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .hero-sub {
+      font-size: 1rem; color: var(--muted); line-height: 1.7; max-width: 480px;
+    }
+    .pill-row {
+      display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center;
+    }
+    .pill {
+      padding: 0.35rem 0.9rem; border-radius: 999px;
+      font-size: 0.78rem; font-weight: 600;
+      border: 1px solid var(--border); color: var(--muted);
+      background: var(--surface);
+    }
+    .btn {
+      padding: 0.9rem 2.4rem; border-radius: 12px;
+      font-size: 1rem; font-weight: 700; letter-spacing: 0.03em;
+      cursor: pointer; border: none; transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary {
+      background: linear-gradient(135deg, #7c6af7, #a78bfa);
+      color: #fff;
+      box-shadow: 0 0 28px rgba(124,106,247,0.45);
+    }
+    .btn-primary:hover { box-shadow: 0 0 40px rgba(124,106,247,0.65); }
+    .btn-ghost {
+      background: var(--surface); color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+
+    /* ── GAME SCREEN ── */
+    #game-screen {
+      gap: 1.5rem;
+    }
+    .top-bar {
+      width: 100%; display: flex; align-items: center; justify-content: space-between;
+      padding: 0.75rem 1.25rem;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px;
+    }
+    .topic-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 0.25rem;
+    }
+    .topic-text {
+      font-size: 0.92rem; font-weight: 600; color: var(--text);
+      text-align: left; max-width: 380px;
+    }
+    .timer-wrap {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 0.2rem;
+      flex-shrink: 0; margin-left: 1rem;
+    }
+    .timer-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    #timer-display {
+      font-size: 1.6rem; font-weight: 900; font-variant-numeric: tabular-nums;
+      color: var(--text); transition: color 0.3s;
+      line-height: 1;
+    }
+    #timer-display.urgent { color: #f87171; }
+
+    /* ── MAIN CARD ── */
+    .main-card {
+      width: 100%; aspect-ratio: 4/3; max-height: 420px;
+      border-radius: 24px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 1rem;
+      position: relative; overflow: hidden;
+      transition: background 0.5s ease, box-shadow 0.5s ease;
+      border: 2px solid transparent;
+    }
+
+    /* number display */
+    #big-number {
+      font-size: clamp(7rem, 22vw, 14rem);
+      font-weight: 900; line-height: 1;
+      transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s;
+      text-shadow: 0 0 60px currentColor;
+    }
+    #big-number.pop {
+      animation: pop 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes pop {
+      0%  { transform: scale(0.4); opacity: 0; }
+      100%{ transform: scale(1);   opacity: 1; }
+    }
+
+    .energy-label {
+      font-size: 0.8rem; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; opacity: 0.7;
+    }
+
+    /* breathe card */
+    #breathe-state {
+      display: flex; flex-direction: column; align-items: center; gap: 1.2rem;
+    }
+    .breathe-text {
+      font-size: clamp(3rem, 10vw, 6rem);
+      font-weight: 900; letter-spacing: 0.06em;
+      color: #34d399;
+      text-shadow: 0 0 50px rgba(52,211,153,0.6);
+      animation: breathePulse 2s ease-in-out infinite;
+    }
+    @keyframes breathePulse {
+      0%, 100% { opacity: 0.7; transform: scale(0.97); }
+      50%       { opacity: 1;   transform: scale(1.03); }
+    }
+    .breathe-ring {
+      width: 90px; height: 90px; border-radius: 50%;
+      border: 3px solid rgba(52,211,153,0.4);
+      animation: ringExpand 2s ease-in-out infinite;
+    }
+    @keyframes ringExpand {
+      0%        { transform: scale(0.8); opacity: 0.2; }
+      50%       { transform: scale(1.2); opacity: 0.6; }
+      100%      { transform: scale(0.8); opacity: 0.2; }
+    }
+
+    /* energy bar */
+    .energy-bar-wrap {
+      width: 100%; padding: 0 0.5rem;
+    }
+    .energy-bar-track {
+      width: 100%; height: 8px; border-radius: 999px;
+      background: rgba(255,255,255,0.07);
+      overflow: hidden; position: relative;
+    }
+    #energy-bar-fill {
+      height: 100%; border-radius: 999px;
+      transition: width 0.5s ease, background 0.5s ease;
+    }
+    .energy-pips {
+      display: flex; justify-content: space-between;
+      padding: 0.4rem 0 0;
+    }
+    .pip {
+      font-size: 0.65rem; font-weight: 700; color: var(--muted);
+      width: 1.2rem; text-align: center;
+    }
+    .pip.active { color: var(--text); }
+
+    /* ── END SCREEN ── */
+    .end-icon {
+      font-size: 4rem; line-height: 1;
+    }
+    .end-title {
+      font-size: 2.2rem; font-weight: 900;
+      background: linear-gradient(135deg, #fff 40%, #7c6af7);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .end-sub {
+      font-size: 0.95rem; color: var(--muted); max-width: 420px; line-height: 1.7;
+    }
+    .stats-row {
+      display: flex; gap: 1.2rem; flex-wrap: wrap; justify-content: center;
+    }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1rem 1.4rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+    }
+    .stat-value {
+      font-size: 2rem; font-weight: 900;
+    }
+    .stat-label {
+      font-size: 0.7rem; font-weight: 600; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .btn-row { display: flex; gap: 0.8rem; flex-wrap: wrap; justify-content: center; }
+  </style>
+</head>
+<body>
+
+<div class="bg-glow" id="bg-glow"></div>
+
+<!-- ═══════════════ INTRO SCREEN ═══════════════ -->
+<div class="screen" id="intro-screen">
+  <p class="logo">Speaking Trainer</p>
+  <h1 class="hero-title">Conductor</h1>
+  <p class="hero-sub">
+    A 70-second spontaneous speaking exercise that trains you to shift your energy and emotional state on the fly. <em>Energy leads. Emotions follow. Words fill in the gap.</em>
+  </p>
+  <div class="pill-row">
+    <span class="pill">🔢 Numbers 1–10</span>
+    <span class="pill">🌬 Breathe commands</span>
+    <span class="pill">⏱ 70 seconds</span>
+    <span class="pill">🎲 Random topic</span>
+  </div>
+  <button class="btn btn-primary" id="start-btn">Start Training</button>
+  <button class="btn btn-ghost" id="how-btn">How to play ↓</button>
+  <div id="how-to" style="display:none; max-width:520px; text-align:left; background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:1.5rem; font-size:0.88rem; line-height:1.8; color:var(--muted);">
+    <p><strong style="color:var(--text);">🎙 Speak continuously</strong> about the random topic you're given.</p><br>
+    <p><strong style="color:var(--text);">🔢 Match the number</strong> — 5 is your natural baseline. Higher means more energy, louder, faster. Lower means calmer, slower, introspective.</p><br>
+    <p><strong style="color:var(--text);">🌬 BREATHE</strong> — stop talking instantly. Pause. Silence. Calm yourself before the next number.</p><br>
+    <p><strong style="color:var(--text);">💡 Pro tip:</strong> Different energy levels open different "mental file folders" — you'll find thoughts you never knew you had.</p>
+  </div>
+</div>
+
+<!-- ═══════════════ GAME SCREEN ═══════════════ -->
+<div class="screen hidden" id="game-screen">
+  <!-- Top bar: topic + timer -->
+  <div class="top-bar">
+    <div style="flex:1">
+      <div class="topic-label">Your Topic</div>
+      <div class="topic-text" id="topic-display">Loading…</div>
+    </div>
+    <div class="timer-wrap">
+      <div class="timer-label">Time</div>
+      <div id="timer-display">1:10</div>
+    </div>
+  </div>
+
+  <!-- Main display card -->
+  <div class="main-card" id="main-card">
+    <!-- Number state -->
+    <div id="number-state">
+      <div id="big-number">5</div>
+      <div class="energy-label" id="energy-label">Baseline</div>
+    </div>
+    <!-- Breathe state (hidden by default) -->
+    <div id="breathe-state" style="display:none">
+      <div class="breathe-text">BREATHE</div>
+      <div class="breathe-ring"></div>
+    </div>
+  </div>
+
+  <!-- Energy bar -->
+  <div class="energy-bar-wrap">
+    <div class="energy-bar-track">
+      <div id="energy-bar-fill" style="width:50%"></div>
+    </div>
+    <div class="energy-pips" id="energy-pips"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ END SCREEN ═══════════════ -->
+<div class="screen hidden" id="end-screen">
+  <div class="end-icon">🎉</div>
+  <h2 class="end-title">Great Round!</h2>
+  <p class="end-sub">You navigated <strong id="end-shifts">0</strong> energy shifts in 70 seconds. The more you practice, the wider your speaking range becomes.</p>
+  <div class="stats-row" id="stats-row"></div>
+  <div class="btn-row">
+    <button class="btn btn-primary" id="play-again-btn">Play Again</button>
+    <button class="btn btn-ghost" id="back-btn">Back to Menu</button>
+  </div>
+</div>
+
+<script>
+// ── TOPICS ─────────────────────────────────────────────────────────────────
+const TOPICS = [
+  "The most important lesson I've ever learned",
+  "What makes a great teacher",
+  "A place that changed the way I see the world",
+  "The future of artificial intelligence",
+  "Why creativity matters more than ever",
+  "An unlikely hero from history",
+  "What I wish I had known at age 10",
+  "The power of a good night's sleep",
+  "Something everyone takes for granted",
+  "Why laughter is serious business",
+  "The best advice I've ever received",
+  "What animals can teach us about leadership",
+  "A moment when I had to start over",
+  "Why boredom might be the secret to genius",
+  "The one skill schools should teach but don't",
+  "What the ocean has in common with human emotion",
+  "A food that tells a story",
+  "What it means to truly listen",
+  "The strangest rule that actually makes sense",
+  "Why mistakes are underrated",
+  "The city I'd build from scratch",
+  "What superpower I'd choose — and why",
+  "The moment everything changed",
+  "Why silence can be louder than words",
+  "What I'd say to my future self",
+  "The invention that reshaped daily life the most",
+  "Why curiosity is a survival skill",
+  "A small habit with a big impact",
+  "What fairness really means",
+  "The story behind my favorite word",
+];
+
+// ── ENERGY CONFIG ──────────────────────────────────────────────────────────
+const ENERGY = {
+  1:  { label: "Almost silent",   color: "#818cf8", glow: "rgba(129,140,248,0.15)", bar: "#818cf8" },
+  2:  { label: "Very calm",       color: "#a5b4fc", glow: "rgba(165,180,252,0.15)", bar: "#a5b4fc" },
+  3:  { label: "Quiet & slow",    color: "#7dd3fc", glow: "rgba(125,211,252,0.15)", bar: "#7dd3fc" },
+  4:  { label: "Soft-spoken",     color: "#6ee7b7", glow: "rgba(110,231,183,0.15)", bar: "#6ee7b7" },
+  5:  { label: "Baseline",        color: "#fbbf24", glow: "rgba(251,191,36,0.18)",  bar: "#fbbf24" },
+  6:  { label: "Engaging",        color: "#f59e0b", glow: "rgba(245,158,11,0.18)",  bar: "#f59e0b" },
+  7:  { label: "Energised",       color: "#fb923c", glow: "rgba(251,146,60,0.2)",   bar: "#fb923c" },
+  8:  { label: "High energy",     color: "#f87171", glow: "rgba(248,113,113,0.2)",  bar: "#f87171" },
+  9:  { label: "Intense",         color: "#ef4444", glow: "rgba(239,68,68,0.22)",   bar: "#ef4444" },
+ 10:  { label: "MAXIMUM",        color: "#dc2626", glow: "rgba(220,38,38,0.28)",   bar: "#dc2626" },
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let gameInterval = null;
+let cueTimeout   = null;
+let timeLeft     = 70;
+let currentNum   = 5;
+let isBreathe    = false;
+let shifts       = 0;
+let breatheCount = 0;
+let highCount    = 0; // ≥7
+let lowCount     = 0; // ≤3
+let stats        = { topic: "", shifts: 0, breathes: 0, high: 0, low: 0 };
+
+// ── ELEMENT REFS ──────────────────────────────────────────────────────────
+const introScreen  = document.getElementById('intro-screen');
+const gameScreen   = document.getElementById('game-screen');
+const endScreen    = document.getElementById('end-screen');
+const bgGlow       = document.getElementById('bg-glow');
+const topicDisplay = document.getElementById('topic-display');
+const timerDisplay = document.getElementById('timer-display');
+const mainCard     = document.getElementById('main-card');
+const bigNumber    = document.getElementById('big-number');
+const energyLabel  = document.getElementById('energy-label');
+const numberState  = document.getElementById('number-state');
+const breatheState = document.getElementById('breathe-state');
+const barFill      = document.getElementById('energy-bar-fill');
+const pipsEl       = document.getElementById('energy-pips');
+const startBtn     = document.getElementById('start-btn');
+const howBtn       = document.getElementById('how-btn');
+const howTo        = document.getElementById('how-to');
+const playAgainBtn = document.getElementById('play-again-btn');
+const backBtn      = document.getElementById('back-btn');
+
+// ── PIPS ──────────────────────────────────────────────────────────────────
+function buildPips() {
+  pipsEl.innerHTML = '';
+  for (let i = 1; i <= 10; i++) {
+    const d = document.createElement('div');
+    d.className = 'pip'; d.id = `pip-${i}`; d.textContent = i;
+    pipsEl.appendChild(d);
+  }
+}
+buildPips();
+
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function formatTime(s) {
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${m}:${ss.toString().padStart(2,'0')}`;
+}
+
+// ── SHOW / HIDE SCREENS ───────────────────────────────────────────────────
+function show(el)  { el.classList.remove('hidden'); }
+function hide(el)  { el.classList.add('hidden'); }
+
+// ── APPLY ENERGY STATE ────────────────────────────────────────────────────
+function applyNumber(n) {
+  isBreathe = false;
+  const cfg = ENERGY[n];
+  currentNum = n;
+  if (n >= 7) highCount++;
+  if (n <= 3) lowCount++;
+
+  // card background
+  mainCard.style.background   = `radial-gradient(ellipse at center, ${cfg.glow} 0%, #0d0d14 70%)`;
+  mainCard.style.boxShadow    = `0 0 60px ${cfg.glow}, inset 0 0 40px ${cfg.glow}`;
+  mainCard.style.borderColor  = cfg.color + '33';
+
+  // number
+  numberState.style.display = 'flex';
+  numberState.style.flexDirection = 'column';
+  numberState.style.alignItems = 'center';
+  breatheState.style.display  = 'none';
+  bigNumber.style.color       = cfg.color;
+  bigNumber.textContent       = n;
+  bigNumber.classList.remove('pop');
+  void bigNumber.offsetWidth; // reflow
+  bigNumber.classList.add('pop');
+  energyLabel.textContent     = cfg.label;
+  energyLabel.style.color     = cfg.color;
+
+  // bg glow
+  bgGlow.style.background = `radial-gradient(ellipse at 50% 50%, ${cfg.glow} 0%, transparent 70%)`;
+
+  // bar
+  barFill.style.width      = `${(n / 10) * 100}%`;
+  barFill.style.background = cfg.bar;
+
+  // pips
+  for (let i = 1; i <= 10; i++) {
+    document.getElementById(`pip-${i}`).classList.toggle('active', i === n);
+  }
+}
+
+function applyBreathe() {
+  isBreathe = true;
+  mainCard.style.background   = `radial-gradient(ellipse at center, rgba(52,211,153,0.12) 0%, #0d0d14 70%)`;
+  mainCard.style.boxShadow    = `0 0 60px rgba(52,211,153,0.15)`;
+  mainCard.style.borderColor  = 'rgba(52,211,153,0.3)';
+  numberState.style.display   = 'none';
+  breatheState.style.display  = 'flex';
+  bgGlow.style.background     = 'radial-gradient(ellipse at 50% 50%, rgba(52,211,153,0.1) 0%, transparent 70%)';
+  barFill.style.width         = '0%';
+  for (let i = 1; i <= 10; i++) {
+    document.getElementById(`pip-${i}`).classList.remove('active');
+  }
+}
+
+// ── CUE SCHEDULER ─────────────────────────────────────────────────────────
+// Sequence: random number → (sometimes breathe) → random number → …
+// Numbers stay on screen 3–7 s; breathe stays 2–4 s.
+let cueQueue = [];
+let cueIndex = 0;
+
+function buildQueue() {
+  cueQueue = [];
+  let elapsed = 0;
+  while (elapsed < 68) {
+    // pick a number, avoid same twice in a row
+    let n;
+    do { n = rand(1, 10); } while (n === (cueQueue.length ? cueQueue[cueQueue.length-1].value : -1));
+    const hold = rand(3, 7);
+    cueQueue.push({ type: 'number', value: n, hold });
+    elapsed += hold;
+
+    // ~30% chance of breathe after any number (if time allows)
+    if (elapsed < 62 && Math.random() < 0.28) {
+      const bHold = rand(2, 4);
+      cueQueue.push({ type: 'breathe', hold: bHold });
+      elapsed += bHold;
+    }
+  }
+}
+
+function nextCue() {
+  if (cueIndex >= cueQueue.length) return;
+  const cue = cueQueue[cueIndex++];
+  if (cue.type === 'number') {
+    applyNumber(cue.value);
+    shifts++;
+  } else {
+    applyBreathe();
+    breatheCount++;
+  }
+  cueTimeout = setTimeout(nextCue, cue.hold * 1000);
+}
+
+// ── GAME LOOP ─────────────────────────────────────────────────────────────
+function startGame() {
+  // reset
+  timeLeft     = 70;
+  shifts       = 0;
+  breatheCount = 0;
+  highCount    = 0;
+  lowCount     = 0;
+  cueIndex     = 0;
+  if (gameInterval) clearInterval(gameInterval);
+  if (cueTimeout)   clearTimeout(cueTimeout);
+
+  const topic = pick(TOPICS);
+  topicDisplay.textContent = topic;
+
+  buildQueue();
+
+  // timer
+  timerDisplay.textContent = formatTime(timeLeft);
+  timerDisplay.classList.remove('urgent');
+  gameInterval = setInterval(() => {
+    timeLeft--;
+    timerDisplay.textContent = formatTime(timeLeft);
+    if (timeLeft <= 10) timerDisplay.classList.add('urgent');
+    if (timeLeft <= 0) endGame(topic);
+  }, 1000);
+
+  // first cue after 1 s
+  setTimeout(nextCue, 800);
+
+  hide(introScreen);
+  hide(endScreen);
+  show(gameScreen);
+  applyNumber(5); // start at baseline
+}
+
+function endGame(topic) {
+  clearInterval(gameInterval);
+  clearTimeout(cueTimeout);
+
+  hide(gameScreen);
+  show(endScreen);
+  bgGlow.style.background = 'radial-gradient(ellipse at 50% 50%, rgba(124,106,247,0.1) 0%, transparent 70%)';
+  mainCard.style.boxShadow = '';
+
+  document.getElementById('end-shifts').textContent = shifts;
+
+  const statsRow = document.getElementById('stats-row');
+  statsRow.innerHTML = `
+    <div class="stat-card">
+      <div class="stat-value" style="color:#fbbf24">${shifts}</div>
+      <div class="stat-label">Energy Shifts</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#34d399">${breatheCount}</div>
+      <div class="stat-label">Breathe Pauses</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#f87171">${highCount}</div>
+      <div class="stat-label">High Energy (7–10)</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-value" style="color:#818cf8">${lowCount}</div>
+      <div class="stat-label">Low Energy (1–3)</div>
+    </div>
+  `;
+}
+
+// ── EVENT LISTENERS ───────────────────────────────────────────────────────
+startBtn.addEventListener('click', startGame);
+
+howBtn.addEventListener('click', () => {
+  const open = howTo.style.display === 'block';
+  howTo.style.display = open ? 'none' : 'block';
+  howBtn.textContent = open ? 'How to play ↓' : 'How to play ↑';
+});
+
+playAgainBtn.addEventListener('click', startGame);
+backBtn.addEventListener('click', () => {
+  hide(endScreen);
+  show(introScreen);
+  bgGlow.style.background = '';
+});
+</script>
+</body>
+</html>
